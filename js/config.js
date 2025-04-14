@@ -1,13 +1,5 @@
-// js/config.js
-
 // 全局常量配置
-
-// 默认代理路径 (适用于 Cloudflare Pages 和 Netlify with rewrite)
-const PROXY_URL = '/proxy/';
-
-// **部署到 Vercel 时，请取消注释下面这行，并注释掉上面那行**
-// const PROXY_URL = '/api/proxy/';
-
+const PROXY_URL = '/proxy/';    // 默认代理路径 (适用于 Cloudflare, Netlify (带重写), Vercel (带重写))
 const HOPLAYER_URL = 'https://hoplayer.com/index.html';
 const SEARCH_HISTORY_KEY = 'videoSearchHistory';
 const MAX_HISTORY_ITEMS = 5;

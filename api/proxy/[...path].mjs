@@ -1,75 +1,78 @@
-// Vercel Serverless Function (ES Module)
+// Vercel Serverless 函数 (ES Module)
 
 import fetch from 'node-fetch';
-import { URL } from 'url'; // Use Node.js built-in URL
+import { URL } from 'url'; // 使用 Node.js 内置 URL 处理
 
-// --- Configuration (Read from Environment Variables) ---
+// --- 配置 (从环境变量读取) ---
 const DEBUG_ENABLED = process.env.DEBUG === 'true';
-const CACHE_TTL = parseInt(process.env.CACHE_TTL || '86400', 10); // Default 24 hours
-const MAX_RECURSION = parseInt(process.env.MAX_RECURSION || '5', 10); // Default 5 levels
+const CACHE_TTL = parseInt(process.env.CACHE_TTL || '86400', 10); // 默认 24 小时
+const MAX_RECURSION = parseInt(process.env.MAX_RECURSION || '5', 10); // 默认 5 层
 
-// --- User Agent Handling ---
-// Start with a default User Agent array
+// --- User Agent 处理 ---
+// 默认 User Agent 列表
 let USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15'
 ];
-// Try to read and parse the USER_AGENTS_JSON environment variable
+// 尝试从环境变量读取并解析 USER_AGENTS_JSON
 try {
     const agentsJsonString = process.env.USER_AGENTS_JSON;
     if (agentsJsonString) {
         const parsedAgents = JSON.parse(agentsJsonString);
-        // Check if parsing resulted in a non-empty array
+        // 检查解析结果是否为非空数组
         if (Array.isArray(parsedAgents) && parsedAgents.length > 0) {
-            USER_AGENTS = parsedAgents; // Use the array from the environment variable
-            console.log(`[Proxy Log] Loaded ${USER_AGENTS.length} user agents from environment variable.`);
+            USER_AGENTS = parsedAgents; // 使用环境变量中的数组
+            console.log(`[代理日志] 已从环境变量加载 ${USER_AGENTS.length} 个 User Agent。`);
         } else {
-            console.warn("[Proxy Log] USER_AGENTS_JSON environment variable is not a valid non-empty array, using default.");
+            console.warn("[代理日志] 环境变量 USER_AGENTS_JSON 不是有效的非空数组，使用默认值。");
         }
     } else {
-        console.log("[Proxy Log] USER_AGENTS_JSON environment variable not set, using default user agents.");
+        console.log("[代理日志] 未设置环境变量 USER_AGENTS_JSON，使用默认 User Agent。");
     }
 } catch (e) {
-    // Log an error if JSON parsing fails
-    console.error(`[Proxy Log] Error parsing USER_AGENTS_JSON environment variable: ${e.message}. Using default user agents.`);
+    // 如果 JSON 解析失败，记录错误并使用默认值
+    console.error(`[代理日志] 解析环境变量 USER_AGENTS_JSON 出错: ${e.message}。使用默认 User Agent。`);
 }
 
-// Ad filtering is disabled in proxy, handled by player
+// 广告过滤在代理中禁用，由播放器处理
 const FILTER_DISCONTINUITY = false;
 
 
-// --- Helper Functions ---
+// --- 辅助函数 ---
 
 function logDebug(message) {
     if (DEBUG_ENABLED) {
-        console.log(`[Proxy Log] ${message}`);
+        console.log(`[代理日志] ${message}`);
     }
 }
 
 /**
- * Extracts the target URL from the encoded path part of the proxy request.
- * @param {string} encodedPath - The URL-encoded path part (e.g., "https%3A%2F%2F...")
- * @returns {string|null} The decoded target URL or null if invalid.
+ * 从代理请求路径中提取编码后的目标 URL。
+ * @param {string} encodedPath - URL 编码后的路径部分 (例如 "https%3A%2F%2F...")
+ * @returns {string|null} 解码后的目标 URL，如果无效则返回 null。
  */
 function getTargetUrlFromPath(encodedPath) {
     if (!encodedPath) {
-        logDebug("getTargetUrlFromPath received empty path.");
+        logDebug("getTargetUrlFromPath 收到空路径。");
         return null;
     }
     try {
         const decodedUrl = decodeURIComponent(encodedPath);
+        // 基础检查，看是否像一个 HTTP/HTTPS URL
         if (decodedUrl.match(/^https?:\/\/.+/i)) {
             return decodedUrl;
         } else {
-            logDebug(`Invalid decoded URL format: ${decodedUrl}`);
+            logDebug(`无效的解码 URL 格式: ${decodedUrl}`);
+            // 备选检查：原始路径是否未编码但看起来像 URL？
             if (encodedPath.match(/^https?:\/\/.+/i)) {
-                logDebug(`Warning: Path was not encoded but looks like URL: ${encodedPath}`);
+                logDebug(`警告: 路径未编码但看起来像 URL: ${encodedPath}`);
                 return encodedPath;
             }
             return null;
         }
     } catch (e) {
-        logDebug(`Error decoding target URL: ${encodedPath} - ${e.message}`);
+        // 捕获解码错误 (例如格式错误的 URI)
+        logDebug(`解码目标 URL 出错: ${encodedPath} - ${e.message}`);
         return null;
     }
 }
@@ -78,46 +81,54 @@ function getBaseUrl(urlStr) {
     if (!urlStr) return '';
     try {
         const parsedUrl = new URL(urlStr);
-        const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
+        // 处理根目录或只有文件名的情况
+        const pathSegments = parsedUrl.pathname.split('/').filter(Boolean); // 移除空字符串
         if (pathSegments.length <= 1) {
             return `${parsedUrl.origin}/`;
         }
-        pathSegments.pop();
+        pathSegments.pop(); // 移除最后一段
         return `${parsedUrl.origin}/${pathSegments.join('/')}/`;
     } catch (e) {
-        logDebug(`Getting BaseUrl failed for "${urlStr}": ${e.message}`);
+        logDebug(`获取 BaseUrl 失败: "${urlStr}": ${e.message}`);
+        // 备用方法：查找最后一个斜杠
         const lastSlashIndex = urlStr.lastIndexOf('/');
-        if (lastSlashIndex > urlStr.indexOf('://') + 2) {
+        if (lastSlashIndex > urlStr.indexOf('://') + 2) { // 确保不是协议部分的斜杠
             return urlStr.substring(0, lastSlashIndex + 1);
         }
-        return urlStr + '/';
+        return urlStr + '/'; // 如果没有路径，添加斜杠
     }
 }
 
 function resolveUrl(baseUrl, relativeUrl) {
-    if (!relativeUrl) return '';
+    if (!relativeUrl) return ''; // 处理空的 relativeUrl
     if (relativeUrl.match(/^https?:\/\/.+/i)) {
-        return relativeUrl;
+        return relativeUrl; // 已经是绝对 URL
     }
-    if (!baseUrl) return relativeUrl;
+    if (!baseUrl) return relativeUrl; // 没有基础 URL 无法解析
+
     try {
+        // 使用 Node.js 的 URL 构造函数处理相对路径
         return new URL(relativeUrl, baseUrl).toString();
     } catch (e) {
-        logDebug(`URL resolution failed: base="${baseUrl}", relative="${relativeUrl}". Error: ${e.message}`);
+        logDebug(`URL 解析失败: base="${baseUrl}", relative="${relativeUrl}". 错误: ${e.message}`);
+        // 简单的备用逻辑
         if (relativeUrl.startsWith('/')) {
-            try {
+             try {
                 const baseOrigin = new URL(baseUrl).origin;
                 return `${baseOrigin}${relativeUrl}`;
-            } catch { return relativeUrl; }
+             } catch { return relativeUrl; } // 如果 baseUrl 也无效，返回原始相对路径
         } else {
+            // 假设相对于包含基础 URL 资源的目录
             return `${baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1)}${relativeUrl}`;
         }
     }
 }
 
+// ** 已修正：确保生成 /proxy/ 前缀的链接 **
 function rewriteUrlToProxy(targetUrl) {
     if (!targetUrl || typeof targetUrl !== 'string') return '';
-    return `/proxy/${encodeURIComponent(targetUrl)}`; // Vercel proxy path
+    // 返回与 vercel.json 的 "source" 和前端 PROXY_URL 一致的路径
+    return `/proxy/${encodeURIComponent(targetUrl)}`;
 }
 
 function getRandomUserAgent() {
@@ -125,32 +136,45 @@ function getRandomUserAgent() {
 }
 
 async function fetchContentWithType(targetUrl, requestHeaders) {
+    // 准备请求头
     const headers = {
         'User-Agent': getRandomUserAgent(),
-        'Accept': requestHeaders['accept'] || '*/*',
+        'Accept': requestHeaders['accept'] || '*/*', // 传递原始 Accept 头（如果有）
         'Accept-Language': requestHeaders['accept-language'] || 'zh-CN,zh;q=0.9,en;q=0.8',
+        // 尝试设置一个合理的 Referer
         'Referer': requestHeaders['referer'] || new URL(targetUrl).origin,
     };
+    // 清理空值的头
     Object.keys(headers).forEach(key => headers[key] === undefined || headers[key] === null || headers[key] === '' ? delete headers[key] : {});
 
-    logDebug(`Fetching target: ${targetUrl} with headers: ${JSON.stringify(headers)}`);
+    logDebug(`准备请求目标: ${targetUrl}，请求头: ${JSON.stringify(headers)}`);
 
     try {
+        // 发起 fetch 请求
         const response = await fetch(targetUrl, { headers, redirect: 'follow' });
+
+        // 检查响应是否成功
         if (!response.ok) {
-            const errorBody = await response.text().catch(() => '');
-            logDebug(`Fetch failed: ${response.status} ${response.statusText} - ${targetUrl}`);
-            const err = new Error(`HTTP error ${response.status}: ${response.statusText}. URL: ${targetUrl}. Body: ${errorBody.substring(0, 200)}`);
-            err.status = response.status;
-            throw err;
+            const errorBody = await response.text().catch(() => ''); // 尝试获取错误响应体
+            logDebug(`请求失败: ${response.status} ${response.statusText} - ${targetUrl}`);
+            // 创建一个包含状态码的错误对象
+            const err = new Error(`HTTP 错误 ${response.status}: ${response.statusText}. URL: ${targetUrl}. Body: ${errorBody.substring(0, 200)}`);
+            err.status = response.status; // 将状态码附加到错误对象
+            throw err; // 抛出错误
         }
+
+        // 读取响应内容
         const content = await response.text();
         const contentType = response.headers.get('content-type') || '';
-        logDebug(`Fetch success: ${targetUrl}, Content-Type: ${contentType}, Length: ${content.length}`);
+        logDebug(`请求成功: ${targetUrl}, Content-Type: ${contentType}, 内容长度: ${content.length}`);
+        // 返回结果
         return { content, contentType, responseHeaders: response.headers };
+
     } catch (error) {
-        logDebug(`Fetch exception for ${targetUrl}: ${error.message}`);
-        throw new Error(`Failed to fetch target URL ${targetUrl}: ${error.message}`);
+        // 捕获 fetch 本身的错误（网络、超时等）或上面抛出的 HTTP 错误
+        logDebug(`请求异常 ${targetUrl}: ${error.message}`);
+        // 重新抛出，确保包含原始错误信息
+        throw new Error(`请求目标 URL 失败 ${targetUrl}: ${error.message}`);
     }
 }
 
@@ -164,7 +188,7 @@ function isM3u8Content(content, contentType) {
 function processKeyLine(line, baseUrl) {
     return line.replace(/URI="([^"]+)"/, (match, uri) => {
         const absoluteUri = resolveUrl(baseUrl, uri);
-        logDebug(`Processing KEY URI: Original='${uri}', Absolute='${absoluteUri}'`);
+        logDebug(`处理 KEY URI: 原始='${uri}', 绝对='${absoluteUri}'`);
         return `URI="${rewriteUrlToProxy(absoluteUri)}"`;
     });
 }
@@ -172,7 +196,7 @@ function processKeyLine(line, baseUrl) {
 function processMapLine(line, baseUrl) {
      return line.replace(/URI="([^"]+)"/, (match, uri) => {
         const absoluteUri = resolveUrl(baseUrl, uri);
-        logDebug(`Processing MAP URI: Original='${uri}', Absolute='${absoluteUri}'`);
+        logDebug(`处理 MAP URI: 原始='${uri}', 绝对='${absoluteUri}'`);
         return `URI="${rewriteUrlToProxy(absoluteUri)}"`;
      });
  }
@@ -180,49 +204,58 @@ function processMapLine(line, baseUrl) {
 function processMediaPlaylist(url, content) {
     const baseUrl = getBaseUrl(url);
     if (!baseUrl) {
-        logDebug(`Could not determine base URL for media playlist: ${url}. Cannot process relative paths.`);
+        logDebug(`无法确定媒体列表的 Base URL: ${url}，相对路径可能无法处理。`);
     }
     const lines = content.split('\n');
     const output = [];
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
+        // 保留最后一个空行
         if (!line && i === lines.length - 1) { output.push(line); continue; }
-        if (!line) continue;
+        if (!line) continue; // 跳过中间空行
+        // 广告过滤已禁用
         if (line.startsWith('#EXT-X-KEY')) { output.push(processKeyLine(line, baseUrl)); continue; }
         if (line.startsWith('#EXT-X-MAP')) { output.push(processMapLine(line, baseUrl)); continue; }
         if (line.startsWith('#EXTINF')) { output.push(line); continue; }
+        // 处理 URL 行
         if (!line.startsWith('#')) {
             const absoluteUrl = resolveUrl(baseUrl, line);
-            logDebug(`Rewriting media segment: Original='${line}', Resolved='${absoluteUrl}'`);
+            logDebug(`重写媒体片段: 原始='${line}', 解析后='${absoluteUrl}'`);
             output.push(rewriteUrlToProxy(absoluteUrl)); continue;
         }
+        // 保留其他 M3U8 标签
         output.push(line);
     }
     return output.join('\n');
 }
 
 async function processM3u8Content(targetUrl, content, recursionDepth = 0) {
+    // 判断是主列表还是媒体列表
     if (content.includes('#EXT-X-STREAM-INF') || content.includes('#EXT-X-MEDIA:')) {
-        logDebug(`Detected master playlist: ${targetUrl} (Depth: ${recursionDepth})`);
+        logDebug(`检测到主播放列表: ${targetUrl} (深度: ${recursionDepth})`);
         return await processMasterPlaylist(targetUrl, content, recursionDepth);
     }
-    logDebug(`Detected media playlist: ${targetUrl} (Depth: ${recursionDepth})`);
+    logDebug(`检测到媒体播放列表: ${targetUrl} (深度: ${recursionDepth})`);
     return processMediaPlaylist(targetUrl, content);
 }
 
 async function processMasterPlaylist(url, content, recursionDepth) {
+    // 检查递归深度
     if (recursionDepth > MAX_RECURSION) {
-        throw new Error(`Max recursion depth (${MAX_RECURSION}) exceeded for master playlist: ${url}`);
+        throw new Error(`处理主播放列表时，递归深度超过最大限制 (${MAX_RECURSION}): ${url}`);
     }
     const baseUrl = getBaseUrl(url);
     const lines = content.split('\n');
     let highestBandwidth = -1;
     let bestVariantUrl = '';
+
+    // 查找最高带宽的流
     for (let i = 0; i < lines.length; i++) {
         if (lines[i].startsWith('#EXT-X-STREAM-INF')) {
             const bandwidthMatch = lines[i].match(/BANDWIDTH=(\d+)/);
             const currentBandwidth = bandwidthMatch ? parseInt(bandwidthMatch[1], 10) : 0;
             let variantUriLine = '';
+            // 找到下一行的 URI
             for (let j = i + 1; j < lines.length; j++) {
                 const line = lines[j].trim();
                 if (line && !line.startsWith('#')) { variantUriLine = line; i = j; break; }
@@ -233,115 +266,154 @@ async function processMasterPlaylist(url, content, recursionDepth) {
             }
         }
     }
+    // 如果没有找到带宽信息，尝试查找第一个 .m3u8 链接
     if (!bestVariantUrl) {
-        logDebug(`No BANDWIDTH found, trying first URI in: ${url}`);
+        logDebug(`主播放列表中未找到 BANDWIDTH 信息，尝试查找第一个 URI: ${url}`);
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
+             // 更可靠地匹配 .m3u8 链接
             if (line && !line.startsWith('#') && line.match(/\.m3u8($|\?.*)/i)) {
                 bestVariantUrl = resolveUrl(baseUrl, line);
-                logDebug(`Fallback: Found first sub-playlist URI: ${bestVariantUrl}`);
+                logDebug(`备选方案: 找到第一个子播放列表 URI: ${bestVariantUrl}`);
                 break;
             }
         }
     }
+    // 如果仍然没有找到子列表 URL
     if (!bestVariantUrl) {
-        logDebug(`No valid sub-playlist URI found in master: ${url}. Processing as media playlist.`);
+        logDebug(`在主播放列表 ${url} 中未找到有效的子列表 URI，将其作为媒体列表处理。`);
         return processMediaPlaylist(url, content);
     }
-    logDebug(`Selected sub-playlist (Bandwidth: ${highestBandwidth}): ${bestVariantUrl}`);
+
+    logDebug(`选择的子播放列表 (带宽: ${highestBandwidth}): ${bestVariantUrl}`);
+    // 请求选定的子播放列表内容 (注意：这里传递 {} 作为请求头，不传递客户端的原始请求头)
     const { content: variantContent, contentType: variantContentType } = await fetchContentWithType(bestVariantUrl, {});
+
+    // 检查获取的内容是否是 M3U8
     if (!isM3u8Content(variantContent, variantContentType)) {
-        logDebug(`Fetched sub-playlist ${bestVariantUrl} is not M3U8 (Type: ${variantContentType}). Treating as media playlist.`);
+        logDebug(`获取的子播放列表 ${bestVariantUrl} 不是 M3U8 (类型: ${variantContentType})，将其作为媒体列表处理。`);
         return processMediaPlaylist(bestVariantUrl, variantContent);
     }
+
+    // 递归处理获取到的子 M3U8 内容
     return await processM3u8Content(bestVariantUrl, variantContent, recursionDepth + 1);
 }
 
 
-// --- Vercel Handler ---
+// --- Vercel Handler 函数 ---
 export default async function handler(req, res) {
-    console.log('--- Vercel Proxy Request ---');
-    console.log('Time:', new Date().toISOString());
-    console.log('Method:', req.method);
-    console.log('URL:', req.url);
+    // --- 记录请求开始 ---
+    console.info('--- Vercel 代理请求开始 ---');
+    console.info('时间:', new Date().toISOString());
+    console.info('方法:', req.method);
+    console.info('URL:', req.url); // Vercel 重写后的原始请求 URL (例如 /proxy/...)
+    console.info('查询参数:', JSON.stringify(req.query)); // Vercel 解析的查询参数
 
-    // --- Set CORS Headers Early ---
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', '*');
+    // --- 提前设置 CORS 头 ---
+    res.setHeader('Access-Control-Allow-Origin', '*'); // 允许任何来源
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS'); // 允许的方法
+    res.setHeader('Access-Control-Allow-Headers', '*'); // 允许所有请求头
 
+    // --- 处理 OPTIONS 预检请求 ---
     if (req.method === 'OPTIONS') {
-        logDebug("Handling OPTIONS request");
-        res.status(204).setHeader('Access-Control-Max-Age', '86400').end();
+        console.info("处理 OPTIONS 预检请求");
+        res.status(204).setHeader('Access-Control-Max-Age', '86400').end(); // 缓存预检结果 24 小时
         return;
     }
 
-    // --- Extract Target URL ---
-    let encodedUrlPath = '';
-    if (req.url && req.url.startsWith('/api/proxy/')) {
-        encodedUrlPath = req.url.substring('/api/proxy/'.length);
-    } else {
-        const pathSegments = req.query.path || [];
-        encodedUrlPath = pathSegments.join('/');
-    }
-    const targetUrl = getTargetUrlFromPath(encodedUrlPath);
-    logDebug(`Resolved target URL: ${targetUrl || 'null'}`);
+    let targetUrl = null; // 初始化目标 URL
 
-    if (!targetUrl) {
-        logDebug('Error: Invalid proxy request path.');
-        res.setHeader('Content-Type', 'application/json');
-        res.status(400).json({ success: false, error: "Invalid proxy request path. Could not extract target URL." });
-        return;
-    }
+    try { // ---- 开始主处理逻辑的 try 块 ----
 
-    logDebug(`Processing proxy request for target: ${targetUrl}`);
+        // --- 提取目标 URL (主要依赖 req.query.path) ---
+        const pathSegments = req.query.path || []; // Vercel 将 `:path*` 放入 req.query.path 数组
+        const encodedUrlPath = pathSegments.join('/'); // 将数组元素重新组合成编码路径
+        console.info(`从 req.query.path 组合的编码路径: ${encodedUrlPath}`);
 
-    try {
-        // Fetch Original Content
+        // 如果上面的方法失败，尝试备选方法（虽然可能性较低）
+        if (!encodedUrlPath && req.url && req.url.startsWith('/proxy/')) {
+            encodedUrlPath = req.url.substring('/proxy/'.length);
+            console.info(`使用备选方法从 req.url 提取的编码路径: ${encodedUrlPath}`);
+        }
+
+        // 解析目标 URL
+        targetUrl = getTargetUrlFromPath(encodedUrlPath);
+        console.info(`解析出的目标 URL: ${targetUrl || 'null'}`); // 记录解析结果
+
+        // 检查目标 URL 是否有效
+        if (!targetUrl) {
+            // 抛出错误，由下面的 catch 块处理
+            throw new Error(`无效的代理请求路径。无法从组合路径 "${encodedUrlPath}" 中提取有效的目标 URL。`);
+        }
+
+        console.info(`开始处理目标 URL 的代理请求: ${targetUrl}`);
+
+        // --- 获取并处理目标内容 ---
+        // 传递原始请求头，以便 fetchContentWithType 可以使用 Accept, Referer 等
         const { content, contentType, responseHeaders } = await fetchContentWithType(targetUrl, req.headers);
 
-        // --- Process if M3U8 ---
+        // --- 如果是 M3U8，处理并返回 ---
         if (isM3u8Content(content, contentType)) {
-            logDebug(`Processing M3U8 content: ${targetUrl}`);
+            console.info(`正在处理 M3U8 内容: ${targetUrl}`);
             const processedM3u8 = await processM3u8Content(targetUrl, content);
 
-            logDebug(`Successfully processed M3U8 for ${targetUrl}`);
+            console.info(`成功处理 M3U8: ${targetUrl}`);
+            // 发送处理后的 M3U8 响应
             res.status(200)
                 .setHeader('Content-Type', 'application/vnd.apple.mpegurl;charset=utf-8')
                 .setHeader('Cache-Control', `public, max-age=${CACHE_TTL}`)
-                .removeHeader('content-encoding') // CRITICAL FIX for Vercel/Node.js
-                .removeHeader('content-length')   // Length has changed
-                .send(processedM3u8);
+                // 移除可能导致问题的原始响应头
+                .removeHeader('content-encoding') // 很重要！node-fetch 已解压
+                .removeHeader('content-length')   // 长度已改变
+                .send(processedM3u8); // 发送 M3U8 文本
 
         } else {
-            // --- Return Original Content (Non-M3U8) ---
-            logDebug(`Returning non-M3U8 content directly: ${targetUrl}, Type: ${contentType}`);
+            // --- 如果不是 M3U8，直接返回原始内容 ---
+            console.info(`直接返回非 M3U8 内容: ${targetUrl}, 类型: ${contentType}`);
 
-            // Set original headers EXCEPT problematic ones
+            // 设置原始响应头，但排除有问题的头和 CORS 头（已设置）
             responseHeaders.forEach((value, key) => {
                  const lowerKey = key.toLowerCase();
                  if (!lowerKey.startsWith('access-control-') &&
-                     lowerKey !== 'content-encoding' && // CRITICAL FIX
-                     lowerKey !== 'content-length') {   // CRITICAL FIX
-                     res.setHeader(key, value);
+                     lowerKey !== 'content-encoding' && // 很重要！
+                     lowerKey !== 'content-length') {   // 很重要！
+                     res.setHeader(key, value); // 设置其他原始头
                  }
              });
+            // 设置我们自己的缓存策略
             res.setHeader('Cache-Control', `public, max-age=${CACHE_TTL}`);
 
+            // 发送原始（已解压）内容
             res.status(200).send(content);
         }
 
-    } catch (error) {
-        logDebug(`ERROR in proxy processing for ${targetUrl}: ${error.message}`);
-        console.error(`[Proxy Error Stack] ${error.stack}`);
+    // ---- 结束主处理逻辑的 try 块 ----
+    } catch (error) { // ---- 捕获处理过程中的任何错误 ----
+        console.error(`[代理错误处理] 目标: ${targetUrl || '解析失败'} | 错误: ${error.message}`);
+        console.error(`[代理错误堆栈] ${error.stack}`); // 记录完整的错误堆栈信息
 
+        // 尝试从错误对象获取状态码，否则默认为 500
         const statusCode = error.status || 500;
 
-        res.setHeader('Content-Type', 'application/json');
-        res.status(statusCode).json({
-            success: false,
-            error: `Proxy processing error: ${error.message}`,
-            targetUrl: targetUrl
-        });
+        // 确保在发送错误响应前没有发送过响应头
+        if (!res.headersSent) {
+             res.setHeader('Content-Type', 'application/json');
+             // CORS 头应该已经在前面设置好了
+             res.status(statusCode).json({
+                success: false,
+                error: `代理处理错误: ${error.message}`,
+                targetUrl: targetUrl // 包含目标 URL 以便调试
+            });
+        } else {
+            // 如果响应头已发送，无法再发送 JSON 错误
+            console.error("[代理错误处理] 响应头已发送，无法发送 JSON 错误响应。");
+            // 尝试结束响应
+             if (!res.writableEnded) {
+                 res.end();
+             }
+        }
+    } finally {
+         // 记录请求处理结束
+         console.info('--- Vercel 代理请求结束 ---');
     }
 }

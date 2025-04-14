@@ -139,10 +139,11 @@ docker run -d --name libretv -p 8899:80 bestzwei/libretv:latest
 
 ## 🔧 自定义配置
 前端配置 (js/config.js):
-- `PROXY_URL`: 根据部署平台调整！ (Vercel: /api/proxy/, CF/Netlify: /proxy/)。
-- `API_SITES`: 添加或修改默认视频源。
-- `SITE_CONFIG`: 更改站点名称、描述等。
-- `PLAYER_CONFIG`: 调整播放器默认参数。
+- `PROXY_URL`: 修改为你自己的代理服务地址 (CF Pages、Vercel、Netlify无需调整，保持默认即可)。
+- `API_SITES`: 添加或修改视频源API接口。
+- `SITE_CONFIG`: 更改站点名称、描述等基本信息。
+- `PLAYER_CONFIG`: 调整播放器参数，如自动播放、广告过滤等。
+- `HIDE_BUILTIN_ADULT_APIS`: 用于控制是否隐藏内置的黄色采集站API，默认值为true。设置为true时，内置的某些敏感API将不会在设置面板中显示，可根据实际需要修改配置。
 - `后端代理配置 (环境变量)`: 在部署平台的设置界面修改 CACHE_TTL, DEBUG, MAX_RECURSION, USER_AGENTS_JSON 等环境变量。
 
 ## 🌟 项目结构 (适配多平台)

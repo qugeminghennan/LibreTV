@@ -1,4 +1,4 @@
-// /api/proxy/[...path].mjs - Vercel Serverless Function (ES Module)
+// Vercel Serverless Function (ES Module)
 
 import fetch from 'node-fetch';
 import { URL } from 'url'; // Use Node.js built-in URL

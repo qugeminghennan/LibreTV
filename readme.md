@@ -58,8 +58,8 @@ LibreTV 播放器支持以下键盘快捷键：
 
 ## 🚀 一键部署
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FbestZwei%2FLibreTV)
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/bestZwei/LibreTV)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCTZZG%2FLibreTV)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/CTZZG/LibreTV)
 [![Deploy to Cloudflare Pages](https://img.shields.io/badge/Deploy%20to-Cloudflare%20Pages-F38020?logo=cloudflare&logoColor=F38020)](https://dash.cloudflare.com/?to=/:account/pages/new/deploy-with-git)
 
 **重要**: 使用上方按钮部署后，仍需根据下文**手动配置环境变量**才能使代理功能正常工作！
@@ -186,6 +186,7 @@ LibreTV/
 ├── robots.txt            // 搜索引擎爬虫配置
 ├── package.json          // package配置
 ├── package-lock.json     // package版本锁定
+└── vercel.json           // vercel配置
 └── sitemap.xml           // 站点地图
 ```
 
@@ -205,6 +206,7 @@ LibreTV/
 │       └── proxy.mjs    // Netlify Function
 ├── player.html          // 自定义视频播放器
 ├── index.html           // 主页面
+├── netlify.toml         // netlify配置
 ├── robots.txt           // 搜索引擎爬虫配置
 ├── package.json         // package配置
 ├── package-lock.json    // package版本锁定

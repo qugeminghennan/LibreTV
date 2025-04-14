@@ -117,7 +117,7 @@ function resolveUrl(baseUrl, relativeUrl) {
 
 function rewriteUrlToProxy(targetUrl) {
     if (!targetUrl || typeof targetUrl !== 'string') return '';
-    return `/api/proxy/${encodeURIComponent(targetUrl)}`; // Vercel proxy path
+    return `/proxy/${encodeURIComponent(targetUrl)}`; // Vercel proxy path
 }
 
 function getRandomUserAgent() {

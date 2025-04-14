@@ -199,7 +199,8 @@ const CUSTOM_API_CONFIG = {
     adultPropName: 'isAdult' // 用于标记成人内容的属性名
 };
 
-
+// 新增隐藏内置黄色采集站API的变量，默认为true
+const HIDE_BUILTIN_ADULT_APIS = true;
 // --- 内部代理功能配置已移除 ---
 // 代理功能的配置现在通过 Cloudflare Pages / Vercel / Netlify 的环境变量设置
 // --- 内部代理功能配置结束 ---

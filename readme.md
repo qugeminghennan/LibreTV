@@ -4,13 +4,11 @@
 
 LibreTV 是一个轻量级、免费的在线视频搜索与观看平台，提供来自多个视频源的内容搜索与播放服务。无需注册，即开即用，支持多种设备访问。项目采用前端技术构建，并**利用 Serverless Functions 实现内部代理**，以解决跨域请求问题并处理 M3U8 播放列表，可轻松部署在 Cloudflare Pages、Vercel、Netlify 等现代托管服务上。
 
-本项目基于 [bestK/tv](https://github.com/bestK/tv)
+本项目基于 [bestZwei/LibreTV](https://github.com/bestZwei/LibreTV)，主要增加内部代理功能
 
 演示站：[https://libretv.is-an.org/](https://libretv.is-an.org/)
 
 <img src="https://testingcf.jsdelivr.net/gh/bestZwei/imgs@master/picgo/image-20250406231222216.png" alt="LibreTV 界面截图" style="zoom:67%;" />
-
-**感谢 [NodeSupport](https://www.nodeseek.com/post-305185-1) 友情赞助**
 
 ## ✨ 主要特性
 
@@ -51,7 +49,7 @@ LibreTV 播放器支持以下键盘快捷键：
 
 -   HTML5 + CSS3 + JavaScript (ES6+)
 -   Tailwind CSS (通过 CDN 引入)
--   **Serverless Functions**: (Cloudflare Pages Functions / Vercel Serverless Functions / Netlify Functions) 用于实现内部代理。
+-   Serverless Functions: (Cloudflare Pages Functions / Vercel Serverless Functions / Netlify Functions) 用于实现内部代理。
 -   HLS.js: 用于 HLS 流处理和广告过滤。
 -   DPlayer: 视频播放器核心。
 -   localStorage: 用于本地存储设置和历史记录。
@@ -112,30 +110,6 @@ LibreTV 播放器支持以下键盘快捷键：
     *   `USER_AGENTS_JSON`: `["...", "..."]` (同上)
     *   `DEBUG`: `false`
 5.  **部署**: 点击 Deploy site。Netlify 会部署静态文件并识别 `/netlify/functions` 目录下的函数。
-
-### 本地测试 (仅限静态部分)
-
-如果你只想预览静态界面，可以使用任何 HTTP 服务器：
-
-```bash
-# 使用 Node.js 的 http-server
-npx http-server -p 8080
-```
-
-注意: 这种方式无法运行 Serverless Function 代理，因此 API 请求会因跨域失败。要完整测试（包括代理功能），你需要使用对应平台的 CLI 工具进行本地开发：
-Cloudflare Pages: npm install -g wrangler 然后 wrangler pages dev .
-Vercel: npm install -g vercel 然后 vercel dev
-Netlify: npm install -g netlify-cli 然后 netlify dev
-
-### Docker 部署 (仅限静态部分)
-提供的 Docker 镜像仅包含 Nginx 和静态文件，同样无法运行 Serverless Function 代理。
-
-```bash
-docker pull bestzwei/libretv:latest
-docker run -d --name libretv -p 8899:80 bestzwei/libretv:latest
-```
-
-访问 http://localhost:8899 只能查看静态界面，API 功能无法使用。不推荐使用 Docker 部署此项目，除非你自行在 Docker 环境中配置反向代理来模拟 Serverless Function 的行为（这比较复杂）。
 
 ## 🔧 自定义配置
 前端配置 (js/config.js):
@@ -216,15 +190,9 @@ LibreTV/
 
 (注意：实际项目中你只需保留与你目标平台对应的函数文件和配置)
 
-## Star History
-![alt text](https://api.star-history.com/svg?repos=bestZwei/LibreTV&type=Date)
-
 ## ⚠️ 免责声明
 
 LibreTV 仅作为视频搜索工具，不存储、上传或分发任何视频内容。所有视频均来自第三方 API 接口提供的公开搜索结果。内部代理仅用于解决浏览器跨域限制和处理 M3U8 格式，不修改视频内容本身。如有侵权内容，请联系相应的内容提供方处理。使用本工具产生的任何法律后果由使用者自行承担。
 
 ## 🔄 更新日志
-- 1.0.0 (2025-04-06): 初始版本发布。
-- 1.0.1 (2025-04-07): 添加客户端广告过滤，优化播放器。
-- 1.0.2 (2025-04-08): 分离播放页面，优化 API 兼容性。
-- 1.1.0 (2025-04-12): 集成 Serverless Function 内部代理，解决 CORS 问题，重构 M3U8 处理逻辑，移除 KV 依赖，增加多平台 (CF Pages, Vercel, Netlify) 部署支持和指南。
+同步原项目更新，添加内部代理

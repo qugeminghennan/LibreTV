@@ -38,7 +38,6 @@ LibreTV 播放器支持以下键盘快捷键：
 ## 📹 视频源与代理说明
 
 -   **代理作用**: 由于浏览器同源策略限制，前端无法直接请求第三方 API。本项目使用 Serverless Function（部署在 Cloudflare Pages / Vercel / Netlify）作为内部代理，代为请求目标 API 和 M3U8 文件，解决跨域问题，并统一处理 M3U8 文件中的 URL，确保播放流畅。
--   **支持的源**: 默认支持黑木耳、非凡影视、天涯资源等多个公开采集站。
 -   **CMS 兼容性**: 支持标准的**苹果CMS V10 API**格式。
     -   搜索接口格式: `/api.php/provide/vod/?ac=videolist&wd=关键词`
     *   详情接口格式: `/api.php/provide/vod/?ac=videolist&ids=视频ID` (注意：v10详情接口通常也是`ac=videolist`)

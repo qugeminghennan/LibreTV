@@ -81,7 +81,6 @@ LibreTV 播放器支持以下键盘快捷键：
     *   `USER_AGENTS_JSON`: `["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"]` (JSON 字符串数组格式，至少包含一个 User-Agent)
     *   `DEBUG`: `false` (设为 `true` 可在函数日志中看到更多信息)
 5.  **部署**: 保存并部署。Cloudflare 会自动识别 `/functions` 目录下的函数。
-6.  **检查配置**: 确保 `js/config.js` 中的 `PROXY_URL` 设置为 `/proxy/` (默认值)。
 
 ### B. Vercel 部署
 
@@ -98,12 +97,6 @@ LibreTV 播放器支持以下键盘快捷键：
     *   `USER_AGENTS_JSON`: `["...", "..."]` (同上)
     *   `DEBUG`: `false`
 5.  **部署**: 点击 Deploy。Vercel 会自动识别 `/api` 目录下的函数。
-6.  **检查配置**: **【关键步骤】** 修改 `js/config.js` 文件，将 `PROXY_URL` 的值改为 `/api/proxy/`。你需要**提交这次修改**到你的 Git 仓库，Vercel 会自动重新部署。
-    ```javascript
-    // js/config.js
-    // const PROXY_URL = '/proxy/'; // 注释掉这行
-    const PROXY_URL = '/api/proxy/'; // 取消注释这行
-    ```
 
 ### C. Netlify 部署
 
@@ -119,9 +112,6 @@ LibreTV 播放器支持以下键盘快捷键：
     *   `USER_AGENTS_JSON`: `["...", "..."]` (同上)
     *   `DEBUG`: `false`
 5.  **部署**: 点击 Deploy site。Netlify 会部署静态文件并识别 `/netlify/functions` 目录下的函数。
-6.  **检查配置**:
-    *   确保项目根目录下有 `netlify.toml` 文件，并且包含正确的重写规则（如之前提供的内容）。
-    *   确保 `js/config.js` 中的 `PROXY_URL` 设置为 `/proxy/` (默认值)。
 
 ### 本地测试 (仅限静态部分)
 

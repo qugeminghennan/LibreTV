@@ -7,10 +7,10 @@ const MAX_HISTORY_ITEMS = 5;
 // 网站信息配置
 const SITE_CONFIG = {
     name: 'LibreTV',
-    url: 'https://libretv.is-an.org', // 您可以改成您的实际部署地址
+    url: 'https://libretv.is-an.org',
     description: '免费在线视频搜索与观看平台',
     logo: 'https://images.icon-icons.com/38/PNG/512/retrotv_5520.png',
-    version: '1.0.1' // 版本号更新
+    version: '1.0.3'
 };
 
 // API站点配置
@@ -18,17 +18,16 @@ const API_SITES = {
     heimuer: {
         api: 'https://json.heimuer.xyz',
         name: '黑木耳',
-        detail: 'https://heimuer.tv' // 假设详情页基础 URL
+        detail: 'https://heimuer.tv'
     },
     ffzy: {
-        api: 'http://ffzy5.tv', // 注意 http
+        api: 'http://ffzy5.tv',
         name: '非凡影视',
-        detail: 'http://ffzy5.tv' // 详情页基础 URL
+        detail: 'http://ffzy5.tv'
     },
     tyyszy: {
         api: 'https://tyyszy.com',
         name: '天涯资源',
-        // detail: 'https://tyyszy.com' // 如果有详情页
     },
     ckzy: {
         api: 'https://www.ckzy1.com',
@@ -38,27 +37,27 @@ const API_SITES = {
     zy360: {
         api: 'https://360zy.com',
         name: '360资源',
-        // detail: 'https://360zy.com'
     },
     wolong: {
         api: 'https://wolongzyw.com',
         name: '卧龙资源',
-        // detail: 'https://wolongzyw.com'
     },
     cjhw: {
         api: 'https://cjhwba.com',
         name: '新华为',
-        // detail: 'https://cjhwba.com'
+    },
+    hwba: {
+        api: 'https://cjwba.com',
+        name: '华为吧资源',
     },
     jisu: {
         api: 'https://jszyapi.com',
         name: '极速资源',
-        detail: 'https://jszyapi.com' // 详情页基础 URL
+        detail: 'https://jszyapi.com'
     },
     dbzy: {
         api: 'https://dbzy.com',
         name: '豆瓣资源',
-        // detail: 'https://dbzy.com'
     },
     bfzy: {
         api: 'https://bfzyapi.com',
@@ -76,7 +75,6 @@ const API_SITES = {
         api: 'https://cj.rycjapi.com',
         name: '如意资源',
     },
-
     jkun: {
         api: 'https://jkunzyapi.com',
         name: 'jkun资源',
@@ -118,16 +116,17 @@ const API_SITES = {
 
 // 添加聚合搜索的配置选项
 const AGGREGATED_SEARCH_CONFIG = {
-    enabled: true,             // 是否启用聚合搜索 (目前通过选择 "聚合搜索" 实现)
-    timeout: 8000,            // 单个源超时时间（毫秒） - 用于 handleAggregatedSearch
-    maxResults: 10000,          // 最大结果数量 (目前未强制限制)
-    parallelRequests: true,   // 是否并行请求所有源 (handleAggregatedSearch 已实现)
-    showSourceBadges: true    // 是否显示来源徽章 (app.js 已实现)
+    enabled: true,             // 是否启用聚合搜索
+    timeout: 8000,            // 单个源超时时间（毫秒）
+    maxResults: 10000,          // 最大结果数量
+    parallelRequests: true,   // 是否并行请求所有源
+    showSourceBadges: true    // 是否显示来源徽章
 };
 
-// 抽象API请求配置 (这些路径通常是固定的)
+// 抽象API请求配置
 const API_CONFIG = {
     search: {
+    	// 修改搜索接口为返回更多详细数据（包括视频封面、简介和播放列表）
         path: '/api.php/provide/vod/?ac=videolist&wd=',
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -135,6 +134,7 @@ const API_CONFIG = {
         }
     },
     detail: {
+    	// 修改详情接口也使用videolist接口，但是通过ID查询，减少请求次数
         path: '/api.php/provide/vod/?ac=videolist&ids=',
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -143,7 +143,7 @@ const API_CONFIG = {
     }
 };
 
-// 优化后的正则表达式模式 (用于非凡/极速等直接爬取详情页的情况)
+// 优化后的正则表达式模式
 const M3U8_PATTERN = /\$https?:\/\/[^"'\s]+?\.m3u8/g;
 
 // 添加自定义播放器URL
@@ -154,15 +154,15 @@ const PLAYER_CONFIG = {
     autoplay: true,
     allowFullscreen: true,
     width: '100%',
-    height: '600', // player.html 中通过 CSS 控制更灵活
-    timeout: 15000,  // 播放器加载超时时间 (player.html 中有类似逻辑)
-    filterAds: true,  // 是否启用广告过滤 (现在由 player.html 的逻辑和开关控制)
-    autoPlayNext: true,  // 默认启用自动连播功能 (player.html 中实现)
-    adFilteringEnabled: true, // 默认开启分片广告过滤 (player.html 中实现)
+    height: '600',
+    timeout: 15000,  // 播放器加载超时时间
+    filterAds: true,  // 是否启用广告过滤
+    autoPlayNext: true,  // 默认启用自动连播功能
+    adFilteringEnabled: true, // 默认开启分片广告过滤
     adFilteringStorage: 'adFilteringEnabled' // 存储广告过滤设置的键名
 };
 
-// 增加错误信息本地化 (可以在 ui.js 中使用)
+// 增加错误信息本地化
 const ERROR_MESSAGES = {
     NETWORK_ERROR: '网络连接错误，请检查网络设置',
     TIMEOUT_ERROR: '请求超时，服务器响应时间过长',
@@ -171,11 +171,11 @@ const ERROR_MESSAGES = {
     UNKNOWN_ERROR: '发生未知错误，请刷新页面重试'
 };
 
-// 添加进一步安全设置 (主要用于前端输入验证)
+// 添加进一步安全设置
 const SECURITY_CONFIG = {
-    enableXSSProtection: true,  // 是否启用XSS保护 (体现在 app.js 处理用户输入和渲染结果时)
-    sanitizeUrls: true,         // 是否清理URL (体现在 app.js 处理用户输入和 API 结果时)
-    maxQueryLength: 100,        // 最大搜索长度 (可以在 app.js 的 search 函数中检查)
+    enableXSSProtection: true,  // 是否启用XSS保护
+    sanitizeUrls: true,         // 是否清理URL
+    maxQueryLength: 100,        // 最大搜索长度
     // allowedApiDomains 不再需要，因为所有请求都通过内部代理
 };
 
@@ -183,16 +183,13 @@ const SECURITY_CONFIG = {
 const CUSTOM_API_CONFIG = {
     separator: ',',           // 分隔符
     maxSources: 5,            // 最大允许的自定义源数量
-    testTimeout: 5000,        // 测试超时时间(毫秒) - 用于 app.js 的 testSiteAvailability
-    namePrefix: 'Custom-',    // 自定义源名称前缀 (修改为中文)
-    validateUrl: true,        // 验证URL格式 (app.js 中使用)
-    cacheResults: true,       // 缓存测试结果 (app.js 中使用 localStorage)
-    cacheExpiry: 5184000000,  // 缓存过期时间(2个月) (app.js 中使用)
+    testTimeout: 5000,        // 测试超时时间(毫秒)
+    namePrefix: 'Custom-',    // 自定义源名称前缀
+    validateUrl: true,        // 验证URL格式
+    cacheResults: true,       // 缓存测试结果
+    cacheExpiry: 5184000000,  // 缓存过期时间(2个月)
     adultPropName: 'isAdult' // 用于标记成人内容的属性名
 };
 
 // 新增隐藏内置黄色采集站API的变量，默认为true
 const HIDE_BUILTIN_ADULT_APIS = true;
-// --- 内部代理功能配置已移除 ---
-// 代理功能的配置现在通过 Cloudflare Pages / Vercel / Netlify 的环境变量设置
-// --- 内部代理功能配置结束 ---

@@ -105,14 +105,14 @@ function initAPICheckboxes() {
             </svg>
         </span>`;
         container.appendChild(adultTitle);
-
+        
         // 创建成人API源的复选框
         Object.keys(API_SITES).forEach(apiKey => {
             const api = API_SITES[apiKey];
             if (!api.adult) return; // 仅添加成人内容API
-
+            
             const checked = selectedAPIs.includes(apiKey);
-
+            
             const checkbox = document.createElement('div');
             checkbox.className = 'flex items-center';
             checkbox.innerHTML = `
@@ -123,7 +123,7 @@ function initAPICheckboxes() {
                 <label for="api_${apiKey}" class="ml-1 text-xs text-pink-400 truncate">${api.name}</label>
             `;
             container.appendChild(checkbox);
-
+            
             // 添加事件监听器
             checkbox.querySelector('input').addEventListener('change', function() {
                 updateSelectedAPIs();
@@ -853,11 +853,26 @@ async function showDetails(id, vod_name, sourceCode) {
     }
 }
 
-// 更新播放视频函数，修改为在新标签页中打开播放页面
+// 更新播放视频函数，修改为在新标签页中打开播放页面，并保存到历史记录
 function playVideo(url, vod_name, episodeIndex = 0) {
     if (!url) {
         showToast('无效的视频链接', 'error');
         return;
+    }
+    
+    // 获取当前视频来源名称（从模态框标题中提取）
+    let sourceName = '';
+    const modalTitle = document.getElementById('modalTitle');
+    if (modalTitle) {
+        const sourceSpan = modalTitle.querySelector('span.text-gray-400');
+        if (sourceSpan) {
+            // 提取括号内的来源名称, 例如从 "(黑木耳)" 提取 "黑木耳"
+            const sourceText = sourceSpan.textContent;
+            const match = sourceText.match(/\(([^)]+)\)/);
+            if (match && match[1]) {
+                sourceName = match[1].trim();
+            }
+        }
     }
     
     // 保存当前状态到localStorage，让播放页面可以获取
@@ -866,8 +881,23 @@ function playVideo(url, vod_name, episodeIndex = 0) {
     localStorage.setItem('currentEpisodes', JSON.stringify(currentEpisodes));
     localStorage.setItem('episodesReversed', episodesReversed);
     
+    // 构建视频信息对象，使用标题作为唯一标识
+    const videoTitle = vod_name || currentVideoTitle;
+    const videoInfo = {
+        title: videoTitle,
+        url: url,
+        episodeIndex: episodeIndex,
+        sourceName: sourceName,
+        timestamp: Date.now()
+    };
+    
+    // 保存到观看历史，添加sourceName
+    if (typeof addToViewingHistory === 'function') {
+        addToViewingHistory(videoInfo);
+    }
+    
     // 构建播放页面URL，传递必要参数
-    const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(vod_name)}&index=${episodeIndex}`;
+    const playerUrl = `player.html?url=${encodeURIComponent(url)}&title=${encodeURIComponent(videoTitle)}&index=${episodeIndex}&source=${encodeURIComponent(sourceName)}`;
     
     // 在新标签页中打开播放页面
     window.open(playerUrl, '_blank');
